@@ -27,7 +27,7 @@ npx expo start
    - Configure as URLs de redirecionamento conforme necessário.
 
 2. **Configuração no Código:**
-   - No arquivo `.env`, adicione a chave pública obtida:
+   - Renomeie o arquivo `.env.example` para `.env`, adicione a chave pública obtida:
      ```env
      EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=your-clerk-publishable-key
      ```
@@ -36,61 +36,96 @@ npx expo start
 
 Abaixo está uma explicação de partes importantes do código:
 
-### `Layout.tsx`
+### `src/app/(auth)/index.tsx - Home`
 
-Este arquivo contém a configuração principal do ClerkProvider e a lógica de redirecionamento baseada no estado de autenticação do usuário.
+O `Home` é um componente funcional em React Native que utiliza hooks para gerenciar a autenticação e exibir informações do usuário.
 
-```typescript
-import { Slot, router } from 'expo-router';
-import { ClerkProvider, useAuth } from '@clerk/clerk-expo';
-import { useEffect } from 'react';
-import { ActivityIndicator } from 'react-native';
-import { tokenCache } from '@/storage/tokenCache';
+O componente `Home` é essencial para:
 
-const PUBLIC_CLERK_PUBLISHABLE_KEY = process.env
-  .EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY as string;
+- Exibir informações personalizadas do usuário autenticado.
+- Prover uma experiência de usuário amigável ao permitir que os usuários visualizem suas informações e façam logout facilmente.
+- Utilizar hooks do Clerk para gerenciar autenticação de forma eficiente e segura.
 
-function InitialLayout() {
-  const { isSignedIn, isLoaded } = useAuth();
+O componente `Home` realiza as seguintes tarefas principais:
 
-  useEffect(() => {
-    if (!isLoaded) {
-      return;
-    }
-    if (isSignedIn) {
-      router.replace('(auth)');
-    } else {
-      router.replace('(public)');
-    }
-  }, [isSignedIn]);
+1. **Obtenção de Dados do Usuário**:
 
-  return isLoaded ? (
-    <Slot />
-  ) : (
-    <ActivityIndicator
-      style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
-    />
-  );
-}
+   - Utiliza o hook `useUser` para obter o objeto `user`, que contém informações do usuário autenticado.
+   - Utiliza o hook `useAuth` para obter a função `signOut`, que permite ao usuário sair da conta.
 
-export default function Layout() {
-  return (
-    <ClerkProvider
-      publishableKey={PUBLIC_CLERK_PUBLISHABLE_KEY}
-      tokenCache={tokenCache}
-    >
-      <InitialLayout />
-    </ClerkProvider>
-  );
-}
-```
+2. **Renderização da Interface do Usuário**:
+   - Renderiza uma `View` principal que atua como um contêiner.
+   - Dentro da `View`, exibe a imagem de perfil do usuário usando um componente `Image`.
+   - Exibe o nome completo do usuário utilizando um componente `Text`.
+   - Inclui um botão (componente `Button`) que, ao ser pressionado, chama a função `signOut` para desconectar o usuário.
 
-### Explicação:
+### `src/app/(public)/_layout.tsx - Layout.tsx`
 
-- **ClerkProvider:** Envolve o aplicativo, fornecendo contexto de autenticação para todos os componentes.
-- **InitialLayout:** Componente que verifica se o usuário está autenticado e redireciona conforme o estado.
-- **useAuth:** Hook fornecido pelo Clerk para obter o estado de autenticação do usuário.
-- **router:** Utilizado para redirecionar o usuário para as rotas apropriadas (`(auth)` para autenticados e `(public)` para não autenticados).
+O componente `Layout` configura e gerencia o contexto de autenticação para a aplicação React Native usando Clerk. Ele define a lógica para redirecionar os usuários baseados no seu estado de autenticação e garante que a interface de usuário exiba um indicador de carregamento até que a autenticação seja resolvida.
+
+#### Importações e Configurações Iniciais
+
+- **Importações**:
+  - Importa módulos e componentes necessários do `expo-router`, `@clerk/clerk-expo`, `react`, e `react-native`.
+  - Importa `tokenCache` de um módulo local, usado para gerenciar o cache de tokens de autenticação.
+- **Chave Pública**:
+  - Obtém a chave pública publicável do Clerk a partir das variáveis de ambiente para configurar o `ClerkProvider`.
+
+#### Componente `InitialLayout`
+
+1. **useAuth Hook**:
+
+   - Utiliza o hook `useAuth` para obter os estados `isSignedIn` (indica se o usuário está autenticado) e `isLoaded` (indica se os dados de autenticação foram carregados).
+
+2. **useEffect**:
+
+   - Usa `useEffect` para monitorar mudanças no estado de autenticação.
+   - Se `isLoaded` for `false`, o efeito não faz nada.
+   - Se `isLoaded` for `true`, verifica `isSignedIn`:
+     - Se o usuário estiver autenticado, redireciona para a rota `(auth)`.
+     - Caso contrário, redireciona para a rota `(public)`.
+
+3. **Retorno Condicional**:
+   - Se os dados de autenticação ainda não estiverem carregados (`isLoaded` for `false`), exibe um indicador de carregamento (`ActivityIndicator`).
+   - Se os dados de autenticação estiverem carregados (`isLoaded` for `true`), renderiza o componente `Slot`.
+
+#### Componente `Layout`
+
+- **ClerkProvider**:
+  - Envolve o `InitialLayout` com o `ClerkProvider`, fornecendo o contexto de autenticação do Clerk.
+  - Configura o `ClerkProvider` com a chave pública publicável e o cache de tokens.
+  - Renderiza o `InitialLayout` dentro do `ClerkProvider`, permitindo que ele use autenticação e navegação baseadas no estado de autenticação do usuário.
+
+### `src/storage/tokenCache.ts`
+
+Este módulo fornece duas funções principais (`getToken` e `saveToken`) para gerenciar o armazenamento seguro de tokens utilizando o `expo-secure-store`. A função `getToken` é usada para recuperar tokens armazenados de forma segura, enquanto a função `saveToken` é usada para armazenar tokens de maneira segura. Ambas as funções são exportadas como parte do objeto `tokenCache`, facilitando seu uso em outras partes da aplicação.
+
+### Explicação detalhada do código
+
+#### Importação
+
+- **expo-secure-store**:
+  - Importa todas as funções e objetos exportados pelo módulo `expo-secure-store` como um objeto chamado `SecureStore`. O `expo-secure-store` fornece APIs para armazenar dados de forma segura no dispositivo.
+
+#### Funções
+
+- **getToken**:
+
+  - Define uma função assíncrona chamada `getToken` que aceita uma string `key` como argumento. Esta função será usada para obter itens armazenados de forma segura.
+  - Tenta obter o item armazenado com a chave fornecida usando `SecureStore.getItem(key)`.
+  - Se a operação for bem-sucedida, retorna o item.
+  - Se ocorrer um erro durante a operação, o erro é capturado e lançado novamente.
+
+- **saveToken**:
+  - Define uma função assíncrona chamada `saveToken` que aceita uma string `key` e uma string `value` como argumentos. Esta função será usada para salvar itens de forma segura.
+  - Tenta salvar o item com a chave e o valor fornecidos usando `SecureStore.setItemAsync(key, value)`.
+  - Se a operação for bem-sucedida, retorna o resultado da operação.
+  - Se ocorrer um erro durante a operação, o erro é capturado e lançado novamente.
+
+#### Exportação
+
+- **`export const tokenCache = { getToken, saveToken };`**:
+  - Exporta um objeto chamado `tokenCache` que contém as funções `getToken` e `saveToken`. Isso permite que outras partes da aplicação importem e usem essas funções para gerenciar tokens de forma segura.
 
 ## 🔗 Links Úteis
 
